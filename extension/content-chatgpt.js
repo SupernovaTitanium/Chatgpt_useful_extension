@@ -451,13 +451,13 @@ class TimelineManager {
         handlers.onResize = () => this.hideSelectionExplainButton(false);
         handlers.onPointerDown = (ev) => {
             if (!state.popup || !state.button) return;
-            const target = ev.target;
-            if (state.popup.contains(target) || state.button.contains(target)) return;
+            const path = ev.composedPath();
+            if (path.includes(state.popup) || path.includes(state.button)) return;
             this.hideSelectionExplainPopup();
         };
         handlers.onOutsideClick = (ev) => {
-            const target = ev.target;
-            if (state.popup?.contains(target) || state.button?.contains(target)) return;
+            const path = ev.composedPath();
+            if (path.includes(state.popup) || path.includes(state.button)) return;
             this.hideSelectionExplainPopup();
         };
 

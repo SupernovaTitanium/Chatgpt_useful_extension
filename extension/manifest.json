@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "ChatGPT Conversation Timeline",
+  "name": "chatgpt_enhancer",
   "version": "3.0.0",
   "description": "Adds a navigation timeline to your ChatGPT, DeepSeek, and Gemini conversations for easy navigation.",
   "action": {
