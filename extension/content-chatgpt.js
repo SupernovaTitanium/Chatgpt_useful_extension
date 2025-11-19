@@ -127,6 +127,19 @@ class TimelineManager {
                 labelPattern: /o1|reason/i
             }
         ];
+
+
+        // Provider Configuration
+        this.providers = {
+            chatgpt: {
+                name: 'ChatGPT',
+                host: ['chatgpt.com', 'chat.openai.com'],
+                turnSelector: 'article[data-turn-id]',
+                userTurnSelector: 'article[data-turn="user"]',
+                scrollContainerSelector: null // Auto-detect
+            }
+        };
+        this.currentProvider = this.providers.chatgpt;
     }
 
     perfStart(name) {
@@ -177,7 +190,8 @@ class TimelineManager {
     }
 
     async findCriticalElements() {
-        const firstTurn = await this.waitForElement('article[data-turn-id]');
+        const selector = this.currentProvider.turnSelector;
+        const firstTurn = await this.waitForElement(selector);
         if (!firstTurn) return false;
 
         this.conversationContainer = firstTurn.parentElement;
@@ -282,7 +296,7 @@ class TimelineManager {
         this.perfStart('recalc');
         if (!this.conversationContainer || !this.ui.timelineBar || !this.scrollContainer) return;
 
-        const userTurnElements = this.conversationContainer.querySelectorAll('article[data-turn="user"]');
+        const userTurnElements = this.conversationContainer.querySelectorAll(this.currentProvider.userTurnSelector);
         // Reset visible window to avoid cleaning with stale indices after rebuild
         this.visibleRange = { start: 0, end: -1 };
         // If the conversation is transiently empty (branch switching), don't wipe UI immediately
