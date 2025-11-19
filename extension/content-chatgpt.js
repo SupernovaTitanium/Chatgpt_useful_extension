@@ -173,14 +173,7 @@ class TimelineManager {
         }
         if (window.PromptManager) {
             this.promptManager = new window.PromptManager();
-            this.promptManager.init().then(() => {
-                // Retry render periodically as input might load late
-                const tryRender = () => {
-                    this.promptManager.render();
-                    if (!document.getElementById('chatgpt-prompts-button')) setTimeout(tryRender, 1000);
-                };
-                tryRender();
-            });
+            this.promptManager.init().then(() => this.promptManager.render());
         }
 
         // Force an immediate first build so dots appear without waiting for mutations
@@ -904,26 +897,39 @@ class TimelineManager {
     async sendExplainPrompt(text, modelId) {
         const target = this.findComposerTextarea();
         if (!target) return false;
-        const prompt = `Please explain the highlighted portion from earlier in this conversation:\n\n${text}\n\nFocus on the context directly above.`;
-        this.dispatchInput(target, prompt);
+
+        // Focus and set value
         target.focus();
+        const prompt = `Please explain the highlighted portion from earlier in this conversation:\n\n${text}\n\nFocus on the context directly above.`;
+
+        // React often needs native value setter for state updates
+        const nativeTextAreaValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set;
+        nativeTextAreaValueSetter.call(target, prompt);
+
+        // Dispatch events to trigger React state updates
+        target.dispatchEvent(new Event('input', { bubbles: true }));
+        target.dispatchEvent(new Event('change', { bubbles: true }));
+
+        // Wait a tick for state to settle
+        await new Promise(r => setTimeout(r, 100));
+
+        // Find send button
         const composer = target.closest('form') || document.querySelector('[data-testid="conversation-composer"]');
         let sendButton = null;
         if (composer) {
-            sendButton = composer.querySelector('button[type="submit"]:not([disabled])');
-            if (!sendButton) sendButton = composer.querySelector('button[data-testid="composer-send-button"]:not([disabled])');
+            sendButton = composer.querySelector('button[data-testid="send-button"]') ||
+                composer.querySelector('button[aria-label="Send message"]') ||
+                composer.querySelector('button[data-testid="composer-send-button"]');
         }
-        if (!sendButton) {
-            sendButton = document.querySelector('button[aria-label="Send message"]:not([disabled])');
-        }
-        if (sendButton) {
+
+        if (sendButton && !sendButton.disabled) {
             sendButton.click();
             return true;
         }
-        const enterDown = new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true });
-        const enterUp = new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true });
+
+        // Fallback: Enter key
+        const enterDown = new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true, cancelable: true });
         target.dispatchEvent(enterDown);
-        target.dispatchEvent(enterUp);
         return true;
     }
 

@@ -118,12 +118,13 @@ class FolderManager {
             // Toggle button
             const toggleBtn = document.createElement('button');
             toggleBtn.textContent = '📁';
+            toggleBtn.title = 'Folders';
             toggleBtn.style.cssText = `
-                position: absolute;
-                right: -40px;
+                position: fixed;
+                left: 0;
                 top: 50%;
                 width: 40px;
-                height: 40px;
+                height: 50px;
                 background: #202123;
                 border: 1px solid #4d4d4f;
                 border-left: none;
@@ -133,12 +134,36 @@ class FolderManager {
                 display: flex;
                 align-items: center;
                 justify-content: center;
+                z-index: 10000;
+                font-size: 20px;
+                box-shadow: 2px 0 5px rgba(0,0,0,0.2);
             `;
             toggleBtn.onclick = () => {
                 const isOpen = container.style.transform === 'translateX(0px)';
                 container.style.transform = isOpen ? 'translateX(-100%)' : 'translateX(0px)';
+                // Move toggle button with sidebar
+                toggleBtn.style.left = isOpen ? '0' : '260px';
             };
-            container.appendChild(toggleBtn);
+            document.body.appendChild(toggleBtn);
+
+            // Close button inside sidebar
+            const closeBtn = document.createElement('button');
+            closeBtn.textContent = '×';
+            closeBtn.style.cssText = `
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                background: none;
+                border: none;
+                color: #999;
+                cursor: pointer;
+                font-size: 20px;
+            `;
+            closeBtn.onclick = () => {
+                container.style.transform = 'translateX(-100%)';
+                toggleBtn.style.left = '0';
+            };
+            container.appendChild(closeBtn);
 
             // Title
             const title = document.createElement('h3');

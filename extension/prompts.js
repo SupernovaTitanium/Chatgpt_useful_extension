@@ -86,14 +86,6 @@ class PromptManager {
     }
 
     render() {
-        // Try to find the input area to inject the button
-        // ChatGPT input area selector might change. Usually textarea's parent or nearby.
-        const textarea = document.querySelector('textarea[id="prompt-textarea"]');
-        if (!textarea) return; // Retry later?
-
-        const inputWrapper = textarea.parentElement;
-        if (!inputWrapper) return;
-
         if (document.getElementById('chatgpt-prompts-button')) return;
 
         const btn = document.createElement('button');
@@ -102,30 +94,30 @@ class PromptManager {
         btn.textContent = '⚡';
         btn.title = 'Prompt Toolbox';
         btn.style.cssText = `
-            position: absolute;
-            left: 10px;
-            bottom: 10px;
-            width: 30px;
-            height: 30px;
-            border-radius: 4px;
-            background: transparent;
+            position: fixed;
+            right: 20px;
+            bottom: 80px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: #202123;
             border: 1px solid #565869;
-            color: #8e8ea0;
+            color: #fff;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            z-index: 10;
+            z-index: 9999;
+            font-size: 24px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
         `;
-        // Adjust position based on ChatGPT layout (usually left side of input)
-        // Note: This is brittle. A better place might be the toolbar below input if it exists.
+        btn.onmouseover = () => btn.style.transform = 'scale(1.1)';
+        btn.onmouseout = () => btn.style.transform = 'scale(1)';
 
         btn.onclick = () => this.showModal();
 
-        // Append to wrapper (might need relative positioning)
-        const wrapperStyle = window.getComputedStyle(inputWrapper);
-        if (wrapperStyle.position === 'static') inputWrapper.style.position = 'relative';
-        inputWrapper.appendChild(btn);
+        document.body.appendChild(btn);
     }
 
     showModal() {
