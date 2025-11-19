@@ -90,6 +90,128 @@ class FolderManager {
 
     notifyListeners() {
         this.listeners.forEach(cb => cb(this.folders));
+        this.render();
+    }
+
+    render() {
+        let container = document.getElementById('chatgpt-folders-sidebar');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'chatgpt-folders-sidebar';
+            container.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                bottom: 0;
+                width: 260px;
+                background-color: #202123;
+                border-right: 1px solid #4d4d4f;
+                z-index: 9999;
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+                display: flex;
+                flex-direction: column;
+                padding: 10px;
+                color: white;
+            `;
+
+            // Toggle button
+            const toggleBtn = document.createElement('button');
+            toggleBtn.textContent = '📁';
+            toggleBtn.style.cssText = `
+                position: absolute;
+                right: -40px;
+                top: 50%;
+                width: 40px;
+                height: 40px;
+                background: #202123;
+                border: 1px solid #4d4d4f;
+                border-left: none;
+                border-radius: 0 8px 8px 0;
+                color: white;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            `;
+            toggleBtn.onclick = () => {
+                const isOpen = container.style.transform === 'translateX(0px)';
+                container.style.transform = isOpen ? 'translateX(-100%)' : 'translateX(0px)';
+            };
+            container.appendChild(toggleBtn);
+
+            // Title
+            const title = document.createElement('h3');
+            title.textContent = 'Folders';
+            title.style.marginBottom = '10px';
+            container.appendChild(title);
+
+            // Add Folder Button
+            const addBtn = document.createElement('button');
+            addBtn.textContent = '+ New Folder';
+            addBtn.style.cssText = `
+                background: #343541;
+                border: 1px solid #565869;
+                color: white;
+                padding: 8px;
+                border-radius: 4px;
+                cursor: pointer;
+                margin-bottom: 10px;
+            `;
+            addBtn.onclick = () => {
+                const name = prompt('Folder Name:');
+                if (name) this.createFolder(name);
+            };
+            container.appendChild(addBtn);
+
+            // List
+            const list = document.createElement('div');
+            list.id = 'chatgpt-folders-list';
+            list.style.cssText = `
+                flex: 1;
+                overflow-y: auto;
+            `;
+            container.appendChild(list);
+
+            document.body.appendChild(container);
+        }
+
+        const list = container.querySelector('#chatgpt-folders-list');
+        list.innerHTML = '';
+
+        this.folders.forEach(folder => {
+            const item = document.createElement('div');
+            item.style.cssText = `
+                padding: 8px;
+                background: #343541;
+                margin-bottom: 5px;
+                border-radius: 4px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            `;
+
+            const nameSpan = document.createElement('span');
+            nameSpan.textContent = folder.name;
+            item.appendChild(nameSpan);
+
+            const delBtn = document.createElement('button');
+            delBtn.textContent = '×';
+            delBtn.style.cssText = `
+                background: none;
+                border: none;
+                color: #999;
+                cursor: pointer;
+                font-size: 16px;
+            `;
+            delBtn.onclick = (e) => {
+                e.stopPropagation();
+                if (confirm(`Delete folder "${folder.name}"?`)) this.deleteFolder(folder.id);
+            };
+            item.appendChild(delBtn);
+
+            list.appendChild(item);
+        });
     }
 }
 

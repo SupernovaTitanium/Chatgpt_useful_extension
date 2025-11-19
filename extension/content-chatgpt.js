@@ -165,6 +165,24 @@ class TimelineManager {
         this.setupEventListeners();
         this.setupObservers();
         this.setupSelectionExplainFeature();
+
+        // Initialize Folders and Prompts
+        if (window.FolderManager) {
+            this.folderManager = new window.FolderManager();
+            this.folderManager.init().then(() => this.folderManager.render());
+        }
+        if (window.PromptManager) {
+            this.promptManager = new window.PromptManager();
+            this.promptManager.init().then(() => {
+                // Retry render periodically as input might load late
+                const tryRender = () => {
+                    this.promptManager.render();
+                    if (!document.getElementById('chatgpt-prompts-button')) setTimeout(tryRender, 1000);
+                };
+                tryRender();
+            });
+        }
+
         // Force an immediate first build so dots appear without waiting for mutations
         try { this.recalculateAndRenderMarkers(); } catch { }
         // Load persisted star markers for current conversation
@@ -444,7 +462,11 @@ class TimelineManager {
         document.body.appendChild(popup);
         state.popup = popup;
 
-        trigger.addEventListener('click', () => this.openSelectionExplainPopup());
+        trigger.addEventListener('mousedown', (e) => e.preventDefault()); // Prevent selection loss
+        trigger.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent bubbling to outside click
+            this.openSelectionExplainPopup();
+        });
         askBtn.addEventListener('click', () => this.handleSelectionExplainSend());
         cancelBtn.addEventListener('click', () => {
             this.hideSelectionExplainPopup();
@@ -498,6 +520,9 @@ class TimelineManager {
     }
 
     refreshSelectionExplainButton() {
+        // If popup is open, don't hide anything based on selection
+        if (this.selectionExplainState.popup && this.selectionExplainState.popup.style.display !== 'none') return;
+
         const sel = window.getSelection();
         const state = this.selectionExplainState;
         if (!sel || !sel.rangeCount || sel.isCollapsed) {
