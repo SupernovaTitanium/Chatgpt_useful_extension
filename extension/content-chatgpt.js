@@ -1,80 +1,9 @@
-class TimelineManager {
+```javascript
+class ExtensionManager {
     constructor() {
         this.scrollContainer = null;
         this.conversationContainer = null;
-        this.markers = [];
-        this.activeTurnId = null;
-        this.ui = { timelineBar: null, tooltip: null };
-        this.isScrolling = false;
-
-        this.mutationObserver = null;
-        this.resizeObserver = null;
-        this.intersectionObserver = null;
-        this.themeObserver = null; // observe theme class changes to refresh geometry
-        this.visibleUserTurns = new Set();
-        this.onTimelineBarClick = null;
-        this.onScroll = null;
-        this.onTimelineBarOver = null;
-        this.onTimelineBarOut = null;
-        this.onTimelineBarFocusIn = null;
-        this.onTimelineBarFocusOut = null;
-        this.onWindowResize = null;
-        this.onTimelineWheel = null;
-        this.scrollRafId = null;
-        this.lastActiveChangeTime = 0;
-        this.minActiveChangeInterval = 120; // ms
-        this.pendingActiveId = null;
-        this.activeChangeTimer = null;
-        this.tooltipHideDelay = 100;
-        this.tooltipHideTimer = null;
-        this.measureEl = null; // legacy DOM measurer (kept as fallback)
-        this.truncateCache = new Map();
-        this.measureCanvas = null;
-        this.measureCtx = null;
-        this.showRafId = null;
-        // Long-canvas scrollable track (Linked mode)
-        this.ui.track = null;
-        this.ui.trackContent = null;
-        this.scale = 1;
-        this.contentHeight = 0;
-        this.yPositions = [];
-        this.visibleRange = { start: 0, end: -1 };
-        this.firstUserTurnOffset = 0;
-        this.contentSpanPx = 1;
-        this.usePixelTop = false; // fallback when CSS var positioning is unreliable
-        this._cssVarTopSupported = null;
-        // Left-side slider (only controls timeline scroll)
-        this.ui.slider = null;
-        this.ui.sliderHandle = null;
-        this.sliderDragging = false;
-        this.sliderFadeTimer = null;
-        this.sliderFadeDelay = 1000;
-        this.sliderAlwaysVisible = false; // show slider persistently when scrollable
-        this.onSliderDown = null;
-        this.onSliderMove = null;
-        this.onSliderUp = null;
-        this.markersVersion = 0;
-        // Debug perf
-        this.debugPerf = false;
-        try { this.debugPerf = (localStorage.getItem('chatgptTimelineDebugPerf') === '1'); } catch { }
-        this.onVisualViewportResize = null;
-
-        this.debouncedRecalculateAndRender = this.debounce(this.recalculateAndRenderMarkers, 350);
-
-        // Star/Highlight feature state
-        this.starred = new Set();
-        this.markerMap = new Map();
-        this.conversationId = this.extractConversationIdFromPath(location.pathname);
-        // Long-press gesture state
-        this.longPressDuration = 550; // ms
-        this.longPressMoveTolerance = 6; // px
-        this.longPressTimer = null;
-        this.longPressTriggered = false;
-        this.pressStartPos = null;
-        this.pressTargetDot = null;
-        this.suppressClickUntil = 0;
-        // Cross-tab sync
-        this.onStorage = null;
+        
         // Selection explain feature
         this.selectionExplainState = {
             button: null,
@@ -128,7 +57,6 @@ class TimelineManager {
             }
         ];
 
-
         // Provider Configuration
         this.providers = {
             chatgpt: {
@@ -142,67 +70,46 @@ class TimelineManager {
         this.currentProvider = this.providers.chatgpt;
     }
 
-    perfStart(name) {
-        if (!this.debugPerf) return;
-        try { performance.mark(`tg-${name}-start`); } catch { }
-    }
-
-    perfEnd(name) {
-        if (!this.debugPerf) return;
-        try {
-            performance.mark(`tg-${name}-end`);
-            performance.measure(`tg-${name}`, `tg-${name}-start`, `tg-${name}-end`);
-            const entries = performance.getEntriesByName(`tg-${name}`).slice(-1)[0];
-            if (entries) console.debug(`[TimelinePerf] ${name}: ${Math.round(entries.duration)}ms`);
-        } catch { }
-    }
-
     async init() {
-        const elementsFound = await this.findCriticalElements();
-        if (!elementsFound) return;
-
-        this.injectTimelineUI();
-        this.setupEventListeners();
-        this.setupObservers();
-        this.setupSelectionExplainFeature();
-
-        // Initialize Folders and Prompts
-        if (window.FolderManager) {
-            this.folderManager = new window.FolderManager();
-            this.folderManager.init().then(() => this.folderManager.render());
-        }
-        if (window.PromptManager) {
-            this.promptManager = new window.PromptManager();
-            this.promptManager.init().then(() => this.promptManager.render());
-        }
-
-        // Force an immediate first build so dots appear without waiting for mutations
-        try { this.recalculateAndRenderMarkers(); } catch { }
-        // Load persisted star markers for current conversation
-        this.conversationId = this.extractConversationIdFromPath(location.pathname);
-        this.loadStars();
-        // After loading stars, sync current markers/dots to reflect star state immediately
+        console.log('[ChatGPT Enhancer] Init started');
+        
+        // Initialize Folders and Prompts IMMEDIATELY
         try {
-            for (let i = 0; i < this.markers.length; i++) {
-                const m = this.markers[i];
-                const want = this.starred.has(m.id);
-                if (m.starred !== want) {
-                    m.starred = want;
-                    if (m.dotElement) {
-                        try {
-                            m.dotElement.classList.toggle('starred', m.starred);
-                            m.dotElement.setAttribute('aria-pressed', m.starred ? 'true' : 'false');
-                        } catch { }
-                    }
-                }
+            if (window.FolderManager) {
+                console.log('[ChatGPT Enhancer] Initializing FolderManager');
+                this.folderManager = new window.FolderManager();
+                this.folderManager.init().then(() => {
+                    console.log('[ChatGPT Enhancer] Rendering Folders');
+                    this.folderManager.render();
+                });
+            } else {
+                console.error('[ChatGPT Enhancer] window.FolderManager not found');
             }
-        } catch { }
-        // Initial rendering will be triggered by observers; avoid duplicate delayed re-render
+            if (window.PromptManager) {
+                console.log('[ChatGPT Enhancer] Initializing PromptManager');
+                this.promptManager = new window.PromptManager();
+                this.promptManager.init().then(() => {
+                    console.log('[ChatGPT Enhancer] Rendering Prompts');
+                    this.promptManager.render();
+                });
+            } else {
+                console.error('[ChatGPT Enhancer] window.PromptManager not found');
+            }
+        } catch (e) {
+            console.error('[ChatGPT Enhancer] Error initializing UI managers:', e);
+        }
+
+        // Setup Quick Learn (Selection Explain) Feature
+        // We still need to find the scroll container for positioning logic if needed, 
+        // but we don't need the full timeline critical elements check to block everything.
+        await this.findCriticalElements(); 
+        this.setupSelectionExplainFeature();
     }
 
     async findCriticalElements() {
         const selector = this.currentProvider.turnSelector;
-        const firstTurn = await this.waitForElement(selector);
+        // Don't block indefinitely, just try to find it
+        const firstTurn = document.querySelector(selector);
         if (!firstTurn) return false;
 
         this.conversationContainer = firstTurn.parentElement;
@@ -210,7 +117,7 @@ class TimelineManager {
 
         let parent = this.conversationContainer;
         while (parent && parent !== document.body) {
-            const style = window.getComputedStyle(parent);
+            const style=window.getComputedStyle(parent);
             if (style.overflowY === 'auto' || style.overflowY === 'scroll') {
                 this.scrollContainer = parent;
                 break;
@@ -220,296 +127,44 @@ class TimelineManager {
         return this.scrollContainer !== null;
     }
 
-    injectTimelineUI() {
-        // Idempotent: ensure bar exists, then ensure track + content exist
-        let timelineBar = document.querySelector('.chatgpt-timeline-bar');
-        if (!timelineBar) {
-            timelineBar = document.createElement('div');
-            timelineBar.className = 'chatgpt-timeline-bar';
-            document.body.appendChild(timelineBar);
-        }
-        this.ui.timelineBar = timelineBar;
-        // Track + content
-        let track = this.ui.timelineBar.querySelector('.timeline-track');
-        if (!track) {
-            track = document.createElement('div');
-            track.className = 'timeline-track';
-            this.ui.timelineBar.appendChild(track);
-        }
-        let trackContent = track.querySelector('.timeline-track-content');
-        if (!trackContent) {
-            trackContent = document.createElement('div');
-            trackContent.className = 'timeline-track-content';
-            track.appendChild(trackContent);
-        }
-        this.ui.track = track;
-        this.ui.trackContent = trackContent;
-        // Ensure external left-side slider exists (outside the bar)
-        let slider = document.querySelector('.timeline-left-slider');
-        if (!slider) {
-            slider = document.createElement('div');
-            slider.className = 'timeline-left-slider';
-            const handle = document.createElement('div');
-            handle.className = 'timeline-left-handle';
-            slider.appendChild(handle);
-            document.body.appendChild(slider);
-        }
-        this.ui.slider = slider;
-        this.ui.sliderHandle = slider.querySelector('.timeline-left-handle');
-        // Visibility will be controlled by updateSlider() based on scrollable state
-        if (!this.ui.tooltip) {
-            const tip = document.createElement('div');
-            tip.className = 'timeline-tooltip';
-            tip.setAttribute('role', 'tooltip');
-            tip.id = 'chatgpt-timeline-tooltip';
-            document.body.appendChild(tip);
-            this.ui.tooltip = tip;
-            // Hidden measurement node for legacy DOM truncation (fallback)
-            if (!this.measureEl) {
-                const m = document.createElement('div');
-                m.setAttribute('aria-hidden', 'true');
-                m.style.position = 'fixed';
-                m.style.left = '-9999px';
-                m.style.top = '0px';
-                m.style.visibility = 'hidden';
-                m.style.pointerEvents = 'none';
-                const cs = getComputedStyle(tip);
-                Object.assign(m.style, {
-                    backgroundColor: cs.backgroundColor,
-                    color: cs.color,
-                    fontFamily: cs.fontFamily,
-                    fontSize: cs.fontSize,
-                    lineHeight: cs.lineHeight,
-                    padding: cs.padding,
-                    border: cs.border,
-                    borderRadius: cs.borderRadius,
-                    whiteSpace: 'normal',
-                    wordBreak: 'break-word',
-                    maxWidth: 'none',
-                    display: 'block',
-                    transform: 'none',
-                    transition: 'none'
-                });
-                // Ensure no clamping interferes with measurement
-                try { m.style.webkitLineClamp = 'unset'; } catch { }
-                document.body.appendChild(m);
-                this.measureEl = m;
-            }
-            // Create canvas for text layout based truncation (primary)
-            if (!this.measureCanvas) {
-                this.measureCanvas = document.createElement('canvas');
-                this.measureCtx = this.measureCanvas.getContext('2d');
-            }
-        }
-    }
-
-    recalculateAndRenderMarkers() {
-        this.perfStart('recalc');
-        if (!this.conversationContainer || !this.ui.timelineBar || !this.scrollContainer) return;
-
-        const userTurnElements = this.conversationContainer.querySelectorAll(this.currentProvider.userTurnSelector);
-        // Reset visible window to avoid cleaning with stale indices after rebuild
-        this.visibleRange = { start: 0, end: -1 };
-        // If the conversation is transiently empty (branch switching), don't wipe UI immediately
-        if (userTurnElements.length === 0) {
-            if (!this.zeroTurnsTimer) {
-                this.zeroTurnsTimer = setTimeout(() => {
-                    this.zeroTurnsTimer = null;
-                    this.recalculateAndRenderMarkers();
-                }, 350);
-            }
-            return;
-        }
-        if (this.zeroTurnsTimer) { try { clearTimeout(this.zeroTurnsTimer); } catch { } this.zeroTurnsTimer = null; }
-        // Clear old dots from track/content (now that we know content exists)
-        (this.ui.trackContent || this.ui.timelineBar).querySelectorAll('.timeline-dot').forEach(n => n.remove());
-
-        let contentSpan;
-        const firstTurnOffset = userTurnElements[0].offsetTop;
-        if (userTurnElements.length < 2) {
-            contentSpan = 1;
-        } else {
-            const lastTurnOffset = userTurnElements[userTurnElements.length - 1].offsetTop;
-            contentSpan = lastTurnOffset - firstTurnOffset;
-        }
-        if (contentSpan <= 0) contentSpan = 1;
-
-        // Cache for scroll mapping
-        this.firstUserTurnOffset = firstTurnOffset;
-        this.contentSpanPx = contentSpan;
-
-        // Build markers with normalized position along conversation
-        this.markerMap.clear();
-        this.markers = Array.from(userTurnElements).map(el => {
-            const offsetFromStart = el.offsetTop - firstTurnOffset;
-            let n = offsetFromStart / contentSpan;
-            n = Math.max(0, Math.min(1, n));
-            const m = {
-                id: el.dataset.turnId,
-                element: el,
-                summary: this.normalizeText(el.textContent || ''),
-                n,
-                baseN: n,
-                dotElement: null,
-                starred: false,
-            };
-            try { m.starred = this.starred.has(m.id); } catch { }
-            this.markerMap.set(m.id, m);
-            return m;
-        });
-        // Bump version after markers are rebuilt to invalidate concurrent passes
-        this.markersVersion++;
-
-        // Compute geometry and virtualize render
-        this.updateTimelineGeometry();
-        if (!this.activeTurnId && this.markers.length > 0) {
-            this.activeTurnId = this.markers[this.markers.length - 1].id;
-        }
-        this.syncTimelineTrackToMain();
-        this.updateVirtualRangeAndRender();
-        // Ensure active class is applied after dots are created
-        this.updateActiveDotUI();
-        this.scheduleScrollSync();
-        this.perfEnd('recalc');
-    }
+    // --- Selection Explain Feature ---
 
     setupSelectionExplainFeature() {
         if (this.selectionExplainInitialized) return;
         this.selectionExplainInitialized = true;
-        const state = this.selectionExplainState;
-        const handlers = this.selectionExplainHandlers;
 
-        const trigger = document.createElement('button');
-        trigger.type = 'button';
-        trigger.className = 'timeline-explain-button';
-        trigger.textContent = 'Ask ChatGPT to explain';
-        trigger.setAttribute('aria-haspopup', 'dialog');
-        trigger.style.display = 'none';
-        document.body.appendChild(trigger);
-        state.button = trigger;
+        this.selectionExplainHandlers.onMouseUp = (e) => this.handleSelectionExplainCheck(e);
+        this.selectionExplainHandlers.onKeyUp = (e) => this.handleSelectionExplainCheck(e);
+        this.selectionExplainHandlers.onSelectionChange = () => this.refreshSelectionExplainButton();
+        
+        // Use capture for scroll to handle all scrolling elements
+        document.addEventListener('mouseup', this.selectionExplainHandlers.onMouseUp);
+        document.addEventListener('keyup', this.selectionExplainHandlers.onKeyUp);
+        document.addEventListener('selectionchange', this.selectionExplainHandlers.onSelectionChange);
+        
+        // Close popup on resize or scroll
+        this.selectionExplainHandlers.onWindowScroll = () => this.hideSelectionExplainButton(true);
+        this.selectionExplainHandlers.onResize = () => this.hideSelectionExplainButton(true);
+        window.addEventListener('scroll', this.selectionExplainHandlers.onWindowScroll, { capture: true, passive: true });
+        window.addEventListener('resize', this.selectionExplainHandlers.onResize, { passive: true });
 
-        const popup = document.createElement('div');
-        popup.className = 'timeline-explain-popup';
-        popup.setAttribute('role', 'dialog');
-        popup.setAttribute('aria-modal', 'false');
-        popup.style.display = 'none';
-
-        const header = document.createElement('div');
-        header.className = 'timeline-explain-popup-header';
-        header.textContent = 'Ask for clarification';
-        popup.appendChild(header);
-
-        const modelTray = document.createElement('div');
-        modelTray.className = 'timeline-explain-models';
-        popup.appendChild(modelTray);
-
-        state.modelButtons = new Map();
-        this.selectionExplainModels.forEach((model) => {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'timeline-explain-model-btn';
-            btn.dataset.modelId = model.id;
-            btn.textContent = model.label;
-            btn.title = model.description;
-            if (model.id === state.model) btn.classList.add('active');
-            btn.addEventListener('click', () => this.setSelectionExplainModel(model.id));
-            state.modelButtons.set(model.id, btn);
-            modelTray.appendChild(btn);
-        });
-
-        const snippetWrap = document.createElement('div');
-        snippetWrap.className = 'timeline-explain-snippet';
-        const snippetLabel = document.createElement('div');
-        snippetLabel.className = 'timeline-explain-snippet-label';
-        snippetLabel.textContent = 'Selected text';
-        snippetWrap.appendChild(snippetLabel);
-        const snippetBody = document.createElement('div');
-        snippetBody.className = 'timeline-explain-snippet-body';
-        snippetWrap.appendChild(snippetBody);
-        popup.appendChild(snippetWrap);
-        state.snippetEl = snippetBody;
-
-        const errorEl = document.createElement('div');
-        errorEl.className = 'timeline-explain-error';
-        popup.appendChild(errorEl);
-        state.errorEl = errorEl;
-
-        const actions = document.createElement('div');
-        actions.className = 'timeline-explain-actions';
-        popup.appendChild(actions);
-
-        const cancelBtn = document.createElement('button');
-        cancelBtn.type = 'button';
-        cancelBtn.className = 'timeline-explain-cancel';
-        cancelBtn.textContent = 'Cancel';
-        actions.appendChild(cancelBtn);
-        state.cancelButton = cancelBtn;
-
-        const askBtn = document.createElement('button');
-        askBtn.type = 'button';
-        askBtn.className = 'timeline-explain-send';
-        askBtn.textContent = 'Ask';
-        actions.appendChild(askBtn);
-        state.sendButton = askBtn;
-
-        document.body.appendChild(popup);
-        state.popup = popup;
-
-        trigger.addEventListener('mousedown', (e) => e.preventDefault()); // Prevent selection loss
-        trigger.addEventListener('click', (e) => {
-            e.stopPropagation(); // Prevent bubbling to outside click
-            this.openSelectionExplainPopup();
-        });
-        askBtn.addEventListener('click', () => this.handleSelectionExplainSend());
-        cancelBtn.addEventListener('click', () => {
-            this.hideSelectionExplainPopup();
-            this.hideSelectionExplainButton(false);
-        });
-
-        handlers.onMouseUp = () => this.scheduleSelectionExplainCheck();
-        handlers.onKeyUp = (ev) => {
-            const key = ev?.key || '';
-            if (!key) return;
-            if (key.startsWith('Arrow') || key === 'Shift' || key === 'Escape') {
-                this.scheduleSelectionExplainCheck();
+        // Global click to close popup
+        this.selectionExplainHandlers.onOutsideClick = (e) => {
+            if (this.selectionExplainState.popup && 
+                this.selectionExplainState.popup.style.display !== 'none' &&
+                !this.selectionExplainState.popup.contains(e.target) &&
+                !e.composedPath().includes(this.selectionExplainState.popup)) {
+                this.hideSelectionExplainPopup();
             }
         };
-        handlers.onSelectionChange = () => this.scheduleSelectionExplainCheck();
-        handlers.onScroll = () => this.hideSelectionExplainButton(false);
-        handlers.onWindowScroll = () => this.hideSelectionExplainButton(false);
-        handlers.onResize = () => this.hideSelectionExplainButton(false);
-        handlers.onPointerDown = (ev) => {
-            if (!state.popup || !state.button) return;
-            const path = ev.composedPath();
-            if (path.includes(state.popup) || path.includes(state.button)) return;
-            this.hideSelectionExplainPopup();
-        };
-        handlers.onOutsideClick = (ev) => {
-            const path = ev.composedPath();
-            if (path.includes(state.popup) || path.includes(state.button)) return;
-            this.hideSelectionExplainPopup();
-        };
-
-        document.addEventListener('mouseup', handlers.onMouseUp);
-        document.addEventListener('keyup', handlers.onKeyUp);
-        document.addEventListener('selectionchange', handlers.onSelectionChange);
-        document.addEventListener('pointerdown', handlers.onPointerDown, true);
-        document.addEventListener('click', handlers.onOutsideClick, true);
-        if (this.scrollContainer) {
-            this.scrollContainer.addEventListener('scroll', handlers.onScroll, { passive: true });
-        }
-        window.addEventListener('scroll', handlers.onWindowScroll, { passive: true });
-        window.addEventListener('resize', handlers.onResize, { passive: true });
+        document.addEventListener('mousedown', this.selectionExplainHandlers.onOutsideClick, true);
     }
 
-    scheduleSelectionExplainCheck() {
-        if (this.selectionExplainCheckTimer) {
-            try { clearTimeout(this.selectionExplainCheckTimer); } catch { }
-        }
+    handleSelectionExplainCheck(e) {
+        if (this.selectionExplainCheckTimer) clearTimeout(this.selectionExplainCheckTimer);
         this.selectionExplainCheckTimer = setTimeout(() => {
-            this.selectionExplainCheckTimer = null;
             this.refreshSelectionExplainButton();
-        }, 60);
+        }, 200);
     }
 
     refreshSelectionExplainButton() {
@@ -519,181 +174,364 @@ class TimelineManager {
         const sel = window.getSelection();
         const state = this.selectionExplainState;
         if (!sel || !sel.rangeCount || sel.isCollapsed) {
-            this.hideSelectionExplainPopup();
             this.hideSelectionExplainButton(false);
             return;
         }
-        const text = (sel.toString() || '').trim();
-        if (!text) {
-            this.hideSelectionExplainPopup();
+
+        const text = sel.toString().trim();
+        if (!text || text.length < 5) {
             this.hideSelectionExplainButton(false);
             return;
         }
-        const range = sel.getRangeAt(0);
-        let rect = null;
-        try { rect = range.getBoundingClientRect(); } catch { rect = null; }
-        if (!rect || rect.width === 0 || rect.height === 0) {
-            this.hideSelectionExplainPopup();
-            this.hideSelectionExplainButton(false);
-            return;
-        }
-        let anchorNode = sel.anchorNode;
-        if (anchorNode && anchorNode.nodeType === Node.TEXT_NODE) {
-            anchorNode = anchorNode.parentElement;
-        }
-        let article = anchorNode;
-        while (article && article !== document.body) {
-            if (article === state.popup || article === state.button) {
-                return;
+
+        // Check if selection is within a user or assistant message
+        let node = sel.anchorNode;
+        let validContext = false;
+        while (node && node !== document.body) {
+            if (node.nodeType === 1 && (node.matches('article') || node.getAttribute('data-message-author-role'))) {
+                validContext = true;
+                break;
             }
-            if (article.matches?.('article[data-turn-id]')) break;
-            article = article.parentElement;
+            node = node.parentElement;
         }
-        if (!article) {
-            this.hideSelectionExplainPopup();
+
+        if (!validContext) {
             this.hideSelectionExplainButton(false);
             return;
         }
-        const turnAttr = (article.getAttribute('data-turn') || article.getAttribute('data-role') || '').toLowerCase();
-        if (turnAttr === 'user') {
-            this.hideSelectionExplainPopup();
-            this.hideSelectionExplainButton(false);
-            return;
-        }
+
         state.selectedText = text;
-        state.articleElement = article;
-        state.turnId = article.getAttribute('data-turn-id') || null;
-        state.anchorRect = rect;
-        this.updateSelectionExplainPreview();
-        this.positionSelectionExplainButton(rect);
-        this.hideSelectionExplainPopup(false);
-        this.showSelectionExplainButton();
+        try {
+            const range = sel.getRangeAt(0);
+            state.anchorRect = range.getBoundingClientRect();
+            this.showSelectionExplainButton();
+        } catch (e) {
+            this.hideSelectionExplainButton(false);
+        }
     }
 
     showSelectionExplainButton() {
-        const button = this.selectionExplainState.button;
-        if (!button) return;
-        if (button.style.display !== 'inline-flex') {
-            button.style.display = 'inline-flex';
+        const state = this.selectionExplainState;
+        if (!state.button) {
+            const btn = document.createElement('button');
+            btn.className = 'selection-explain-btn';
+            btn.innerHTML = `
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" >
+        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                </svg>
+    <span>Ask ChatGPT</span>
+`;
+            btn.style.cssText = `
+position: fixed;
+z-index: 9999;
+background: #10a37f;
+color: white;
+border: none;
+border-radius: 5px;
+padding: 6px 10px;
+cursor: pointer;
+font-size: 13px;
+display: flex;
+align-items: center;
+gap: 6px;
+box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+transform: translate(-50%, -100%);
+margin-top: -10px;
+opacity: 0;
+transition: opacity 0.2s;
+pointer-events: auto;
+`;
+            // Prevent mousedown from clearing selection
+            btn.addEventListener('mousedown', (e) => e.preventDefault());
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.openSelectionExplainPopup();
+            });
+            document.body.appendChild(btn);
+            state.button = btn;
         }
-        button.classList.add('visible');
+
+        const rect = state.anchorRect;
+        if (!rect) return;
+
+        const top = rect.top;
+        const left = rect.left + (rect.width / 2);
+        
+        if (top < 0 || top > window.innerHeight) {
+            this.hideSelectionExplainButton(false);
+            return;
+        }
+
+        state.button.style.top = `${ top } px`;
+        state.button.style.left = `${ left } px`;
+        state.button.style.display = 'flex';
+        // Force reflow
+        state.button.offsetHeight;
+        state.button.style.opacity = '1';
     }
 
-    positionSelectionExplainButton(rect) {
+    hideSelectionExplainButton(force) {
         const state = this.selectionExplainState;
-        const button = state.button;
-        if (!button) return;
-        if (this.selectionExplainPositionRaf) {
-            try { cancelAnimationFrame(this.selectionExplainPositionRaf); } catch { }
-            this.selectionExplainPositionRaf = null;
-        }
-        button.style.display = 'inline-flex';
-        button.style.visibility = 'hidden';
-        button.style.top = '0px';
-        button.style.left = '0px';
-        this.selectionExplainPositionRaf = requestAnimationFrame(() => {
-            const width = button.offsetWidth || 160;
-            const height = button.offsetHeight || 36;
-            let top = rect.top - height - 10;
-            if (top < 10) {
-                top = rect.bottom + 10;
-            }
-            let left = rect.left + (rect.width / 2) - (width / 2);
-            const minLeft = 10;
-            const maxLeft = Math.max(minLeft, window.innerWidth - width - 10);
-            if (left < minLeft) left = minLeft;
-            if (left > maxLeft) left = maxLeft;
-            button.style.top = `${Math.round(top)}px`;
-            button.style.left = `${Math.round(left)}px`;
-            button.style.visibility = 'visible';
-        });
-    }
-
-    hideSelectionExplainButton(clearSelection = false) {
-        const state = this.selectionExplainState;
-        const button = state.button;
-        if (this.selectionExplainPositionRaf) {
-            try { cancelAnimationFrame(this.selectionExplainPositionRaf); } catch { }
-            this.selectionExplainPositionRaf = null;
-        }
-        if (button) {
-            button.style.display = 'none';
-            button.classList.remove('visible');
-        }
-        if (clearSelection) {
-            try { window.getSelection()?.removeAllRanges(); } catch { }
+        if (state.popup && state.popup.style.display !== 'none' && !force) return;
+        
+        if (state.button) {
+            state.button.style.opacity = '0';
+            setTimeout(() => {
+                if (state.button.style.opacity === '0') {
+                    state.button.style.display = 'none';
+                }
+            }, 200);
         }
     }
 
     openSelectionExplainPopup() {
         const state = this.selectionExplainState;
-        if (!state.popup || !state.button) return;
-        if (!state.selectedText) return;
-        this.updateSelectionExplainPreview();
-        state.errorEl && (state.errorEl.textContent = '');
-        state.pending = false;
-        state.popup.classList.add('visible');
-        state.popup.style.display = 'block';
-        state.sendButton?.removeAttribute('disabled');
-        this.selectionExplainModels.forEach((model) => {
-            const btn = state.modelButtons?.get(model.id);
-            if (!btn) return;
-            if (model.id === state.model) btn.classList.add('active'); else btn.classList.remove('active');
-        });
-        // Position popup under the trigger by default
-        const triggerRect = state.button.getBoundingClientRect();
-        state.popup.style.visibility = 'hidden';
-        state.popup.style.top = '0px';
-        state.popup.style.left = '0px';
-        requestAnimationFrame(() => {
-            const width = state.popup.offsetWidth || 260;
-            const height = state.popup.offsetHeight || 200;
-            let top = triggerRect.bottom + 8;
-            const bottomSpace = window.innerHeight - triggerRect.bottom - 16;
-            if (bottomSpace < height && triggerRect.top > height + 16) {
-                top = triggerRect.top - height - 8;
-            }
-            if (top < 10) top = 10;
-            let left = triggerRect.left + (triggerRect.width / 2) - (width / 2);
-            const minLeft = 10;
-            const maxLeft = Math.max(minLeft, window.innerWidth - width - 10);
-            if (left < minLeft) left = minLeft;
-            if (left > maxLeft) left = maxLeft;
-            state.popup.style.top = `${Math.round(top)}px`;
-            state.popup.style.left = `${Math.round(left)}px`;
-            state.popup.style.visibility = 'visible';
-        });
-    }
+        this.hideSelectionExplainButton(true);
 
-    hideSelectionExplainPopup(resetError = true) {
-        const state = this.selectionExplainState;
-        if (state.popup) {
-            state.popup.style.display = 'none';
-            state.popup.classList.remove('visible');
+        if (!state.popup) {
+            this.createSelectionExplainPopup();
         }
-        if (resetError && state.errorEl) state.errorEl.textContent = '';
+
+        // Reset state
         state.pending = false;
-    }
-
-    updateSelectionExplainPreview() {
-        const state = this.selectionExplainState;
-        if (!state.snippetEl) return;
-        const text = (state.selectedText || '').trim();
-        const truncated = text.length > 400 ? `${text.slice(0, 400)}…` : text;
-        state.snippetEl.textContent = truncated;
-    }
-
-    setSelectionExplainModel(modelId) {
-        const state = this.selectionExplainState;
-        const target = this.selectionExplainModels.find(m => m.id === modelId);
-        if (!target) return;
-        state.model = target.id;
-        this.selectionExplainModels.forEach((model) => {
-            const btn = state.modelButtons?.get(model.id);
-            if (!btn) return;
-            if (model.id === target.id) btn.classList.add('active');
-            else btn.classList.remove('active');
+        state.model = 'fast'; // default
+        if (state.snippetEl) state.snippetEl.textContent = state.selectedText;
+        
+        // Reset UI
+        const content = state.popup.querySelector('.explain-popup-content');
+        const answerArea = state.popup.querySelector('.explain-popup-answer');
+        const actions = state.popup.querySelector('.explain-popup-actions');
+        
+        if (content) content.style.display = 'block';
+        if (answerArea) {
+            answerArea.style.display = 'none';
+            answerArea.innerHTML = '';
+        }
+        if (actions) actions.style.display = 'flex';
+        
+        // Reset model selection UI
+        state.modelButtons.forEach((btn, id) => {
+            btn.classList.toggle('active', id === state.model);
         });
+
+        state.popup.style.display = 'flex';
+        this.positionSelectionExplainPopup();
+    }
+
+    createSelectionExplainPopup() {
+        const state = this.selectionExplainState;
+        const popup = document.createElement('div');
+        popup.className = 'explain-popup';
+        popup.style.cssText = `
+position: fixed;
+z-index: 10000;
+background: #202123;
+border: 1px solid #4d4d4f;
+border-radius: 8px;
+width: 380px;
+max-height: 500px;
+display: flex;
+flex-direction: column;
+box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+color: #ececf1;
+font-family: sans-serif;
+overflow: hidden;
+`;
+
+        // Header
+        const header = document.createElement('div');
+        header.style.cssText = `
+padding: 12px 16px;
+border-bottom: 1px solid #4d4d4f;
+display: flex;
+justify-content: space-between;
+align-items: center;
+background: #343541;
+font-weight: 600;
+`;
+        header.innerHTML = '<span>Quick Learn</span>';
+        const closeBtn = document.createElement('button');
+        closeBtn.innerHTML = '&times;';
+        closeBtn.style.cssText = `
+background: none;
+border: none;
+color: #999;
+font-size: 20px;
+cursor: pointer;
+padding: 0;
+line-height: 1;
+`;
+        closeBtn.onclick = () => this.hideSelectionExplainPopup();
+        header.appendChild(closeBtn);
+        popup.appendChild(header);
+
+        // Body
+        const body = document.createElement('div');
+        body.style.cssText = `
+padding: 16px;
+overflow-y: auto;
+flex: 1;
+`;
+
+        // Selected Text Snippet
+        const snippetLabel = document.createElement('div');
+        snippetLabel.textContent = 'Selected Context:';
+        snippetLabel.style.cssText = 'font-size: 11px; color: #999; margin-bottom: 4px; text-transform: uppercase;';
+        body.appendChild(snippetLabel);
+
+        const snippet = document.createElement('div');
+        snippet.className = 'explain-popup-snippet';
+        snippet.style.cssText = `
+background: #40414f;
+padding: 8px;
+border-radius: 4px;
+font-size: 13px;
+color: #d1d5db;
+margin-bottom: 16px;
+max-height: 80px;
+overflow-y: auto;
+font-style: italic;
+`;
+        body.appendChild(snippet);
+        state.snippetEl = snippet;
+
+        // Content Area (Model Selection)
+        const content = document.createElement('div');
+        content.className = 'explain-popup-content';
+        
+        const modelLabel = document.createElement('div');
+        modelLabel.textContent = 'Choose Model:';
+        modelLabel.style.cssText = 'font-size: 11px; color: #999; margin-bottom: 8px; text-transform: uppercase;';
+        content.appendChild(modelLabel);
+
+        const modelList = document.createElement('div');
+        modelList.style.cssText = 'display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px;';
+        
+        this.selectionExplainModels.forEach(m => {
+            const mBtn = document.createElement('div');
+            mBtn.style.cssText = `
+padding: 10px;
+border: 1px solid #565869;
+border-radius: 6px;
+cursor: pointer;
+transition: all 0.2s;
+`;
+            mBtn.innerHTML = `
+    <div style="font-weight: 600; font-size: 14px; margin-bottom: 2px;" > ${ m.label }</div>
+        <div style="font-size: 12px; color: #999;">${m.description}</div>
+`;
+            mBtn.onclick = () => {
+                state.model = m.id;
+                state.modelButtons.forEach((b, id) => {
+                    b.style.borderColor = (id === m.id) ? '#10a37f' : '#565869';
+                    b.style.background = (id === m.id) ? 'rgba(16, 163, 127, 0.1)' : 'transparent';
+                });
+            };
+            state.modelButtons.set(m.id, mBtn);
+            modelList.appendChild(mBtn);
+        });
+        // Set default active
+        state.modelButtons.get('fast').click();
+        content.appendChild(modelList);
+        body.appendChild(content);
+
+        // Answer Area
+        const answerArea = document.createElement('div');
+        answerArea.className = 'explain-popup-answer';
+        answerArea.style.cssText = `
+display: none;
+font-size: 14px;
+line-height: 1.5;
+color: #ececf1;
+`;
+        body.appendChild(answerArea);
+
+        // Error Area
+        const errorEl = document.createElement('div');
+        errorEl.style.cssText = 'color: #ef4444; font-size: 13px; margin-top: 10px; display: none;';
+        body.appendChild(errorEl);
+        state.errorEl = errorEl;
+
+        popup.appendChild(body);
+
+        // Footer Actions
+        const actions = document.createElement('div');
+        actions.className = 'explain-popup-actions';
+        actions.style.cssText = `
+padding: 12px 16px;
+border-top: 1px solid #4d4d4f;
+display: flex;
+justify-content: flex-end;
+gap: 10px;
+background: #343541;
+`;
+        
+        const cancelBtn = document.createElement('button');
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.style.cssText = `
+padding: 8px 12px;
+background: transparent;
+border: 1px solid #565869;
+color: white;
+border-radius: 4px;
+cursor: pointer;
+`;
+        cancelBtn.onclick = () => {
+            this.hideSelectionExplainPopup();
+            this.hideSelectionExplainButton(false);
+        };
+        state.cancelButton = cancelBtn;
+        actions.appendChild(cancelBtn);
+
+        const askBtn = document.createElement('button');
+        askBtn.textContent = 'Ask ChatGPT';
+        askBtn.style.cssText = `
+padding: 8px 16px;
+background: #10a37f;
+border: none;
+color: white;
+border-radius: 4px;
+cursor: pointer;
+font-weight: 600;
+`;
+        askBtn.onclick = () => this.handleSelectionExplainSend();
+        state.sendButton = askBtn;
+        actions.appendChild(askBtn);
+
+        popup.appendChild(actions);
+
+        document.body.appendChild(popup);
+        state.popup = popup;
+    }
+
+    positionSelectionExplainPopup() {
+        const state = this.selectionExplainState;
+        if (!state.popup || !state.anchorRect) return;
+
+        const rect = state.anchorRect;
+        const popupRect = state.popup.getBoundingClientRect();
+        
+        // Position centered below selection
+        let top = rect.bottom + 10;
+        let left = rect.left + (rect.width / 2) - (popupRect.width / 2);
+
+        // Keep in viewport
+        if (left < 10) left = 10;
+        if (left + popupRect.width > window.innerWidth - 10) left = window.innerWidth - popupRect.width - 10;
+        if (top + popupRect.height > window.innerHeight - 10) {
+            // If not enough space below, try above
+            const topAbove = rect.top - popupRect.height - 10;
+            if (topAbove > 10) top = topAbove;
+        }
+
+        state.popup.style.top = `${ top } px`;
+        state.popup.style.left = `${ left } px`;
+    }
+
+    hideSelectionExplainPopup() {
+        if (this.selectionExplainState.popup) {
+            this.selectionExplainState.popup.style.display = 'none';
+        }
     }
 
     async handleSelectionExplainSend() {
@@ -895,13 +733,18 @@ class TimelineManager {
     }
 
     async sendExplainPrompt(text, modelId) {
+        console.log('[ChatGPT Enhancer] sendExplainPrompt called');
         const target = this.findComposerTextarea();
-        if (!target) return false;
+        if (!target) {
+            console.error('[ChatGPT Enhancer] Composer textarea not found');
+            return false;
+        }
 
         // Focus and set value
         target.focus();
-        const prompt = `Please explain the highlighted portion from earlier in this conversation:\n\n${text}\n\nFocus on the context directly above.`;
+        const prompt = `Please explain the highlighted portion from earlier in this conversation: \n\n${ text } \n\nFocus on the context directly above.`;
 
+        console.log('[ChatGPT Enhancer] Setting value');
         // React often needs native value setter for state updates
         const nativeTextAreaValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set;
         nativeTextAreaValueSetter.call(target, prompt);
@@ -914,6 +757,7 @@ class TimelineManager {
         await new Promise(r => setTimeout(r, 100));
 
         // Find send button
+        console.log('[ChatGPT Enhancer] Looking for send button');
         const composer = target.closest('form') || document.querySelector('[data-testid="conversation-composer"]');
         let sendButton = null;
         if (composer) {
@@ -922,12 +766,22 @@ class TimelineManager {
                 composer.querySelector('button[data-testid="composer-send-button"]');
         }
 
+        // Fallback global search if composer context fails
+        if (!sendButton) {
+            sendButton = document.querySelector('button[data-testid="send-button"]') ||
+                document.querySelector('button[aria-label="Send message"]');
+        }
+
         if (sendButton && !sendButton.disabled) {
+            console.log('[ChatGPT Enhancer] Clicking send button', sendButton);
             sendButton.click();
             return true;
+        } else {
+            console.warn('[ChatGPT Enhancer] Send button not found or disabled', sendButton);
         }
 
         // Fallback: Enter key
+        console.log('[ChatGPT Enhancer] Trying Enter key fallback');
         const enterDown = new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true, cancelable: true });
         target.dispatchEvent(enterDown);
         return true;
@@ -1064,7 +918,7 @@ class TimelineManager {
         // or just alert the user with the new title.
 
         console.log('New Title Suggested:', newTitle);
-        alert(`Suggested Title: ${newTitle}\n\n(Copy this and rename manually for now, as direct DOM manipulation of React state is unstable)`);
+        alert(`Suggested Title: ${ newTitle } \n\n(Copy this and rename manually for now, as direct DOM manipulation of React state is unstable)`);
 
         // TODO: Implement robust renaming if possible
     }
@@ -1175,7 +1029,7 @@ class TimelineManager {
         this.promptManager.prompts.forEach(p => {
             const item = document.createElement('div');
             item.className = 'p-2 border rounded hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer';
-            item.innerHTML = `<div class="font-bold">${p.title}</div><div class="text-xs text-gray-500 truncate">${p.content}</div>`;
+            item.innerHTML = `<div class="font-bold" > ${ p.title }</div> <div class="text-xs text-gray-500 truncate">${p.content}</div>`;
             item.onclick = () => {
                 this.insertPrompt(p.content);
                 modal.remove();
@@ -1263,7 +1117,7 @@ class TimelineManager {
         let parent = newConv;
         let newScroll = null;
         while (parent && parent !== document.body) {
-            const style = window.getComputedStyle(parent);
+            const style=window.getComputedStyle(parent);
             if (style.overflowY === 'auto' || style.overflowY === 'scroll') {
                 newScroll = parent; break;
             }
@@ -1314,7 +1168,7 @@ class TimelineManager {
                     return;
                 }
                 const targetId = dot.dataset.targetTurnId;
-                const targetElement = this.conversationContainer.querySelector(`article[data-turn-id="${targetId}"]`);
+                const targetElement = this.conversationContainer.querySelector(`article[data - turn - id= "${targetId}"]`);
                 if (targetElement) {
                     // Only scroll; let scroll-based computation set active to avoid double-flash
                     this.smoothScrollTo(targetElement);
@@ -1418,7 +1272,7 @@ class TimelineManager {
                     let fullText = (activeDot.getAttribute('aria-label') || '').trim();
                     try {
                         const id = activeDot.dataset.targetTurnId;
-                        if (id && this.starred.has(id)) fullText = `★ ${fullText}`;
+                        if (id && this.starred.has(id)) fullText = `★ ${ fullText } `;
                     } catch { }
                     const p = this.computePlacementInfo(activeDot);
                     const layout = this.truncateToThreeLines(fullText, p.width, true);
@@ -1484,7 +1338,7 @@ class TimelineManager {
                 if (!e || e.storageArea !== localStorage) return;
                 const cid = this.conversationId;
                 if (!cid) return;
-                const expectedKey = `chatgptTimelineStars:${cid}`;
+                const expectedKey = `chatgptTimelineStars:${ cid } `;
                 if (e.key !== expectedKey) return;
 
                 // Parse new star set
@@ -1651,7 +1505,7 @@ class TimelineManager {
         try {
             const id = dot.dataset.targetTurnId;
             if (id && this.starred.has(id)) {
-                fullText = `★ ${fullText}`;
+                fullText = `★ ${ fullText } `;
             }
         } catch { }
         const p = this.computePlacementInfo(dot);
@@ -1707,7 +1561,7 @@ class TimelineManager {
                     // shrink width to fit
                     const fitWidth = Math.max(120, vw - viewportPad - altLeft);
                     left = altLeft;
-                    width = fitWidth;
+                    width=fitWidth;
                 }
             }
         } else {
@@ -1719,17 +1573,17 @@ class TimelineManager {
                     left = altLeft;
                 } else {
                     const fitWidth = Math.max(120, vw - viewportPad - left);
-                    width = fitWidth;
+                    width=fitWidth;
                 }
             }
         }
 
         let top = Math.round(dotRect.top + dotRect.height / 2 - height / 2);
         top = Math.max(viewportPad, Math.min(vh - height - viewportPad, top));
-        tip.style.width = `${Math.floor(width)}px`;
-        tip.style.height = `${Math.floor(height)}px`;
-        tip.style.left = `${left}px`;
-        tip.style.top = `${top}px`;
+        tip.style.width=`${ Math.floor(width) } px`;
+        tip.style.height=`${ Math.floor(height) } px`;
+        tip.style.left = `${ left } px`;
+        tip.style.top = `${ top } px`;
         tip.setAttribute('data-placement', placement);
     }
 
@@ -1744,7 +1598,7 @@ class TimelineManager {
         let fullText = (dot.getAttribute('aria-label') || '').trim();
         try {
             const id = dot.dataset.targetTurnId;
-            if (id && this.starred.has(id)) fullText = `★ ${fullText}`;
+            if (id && this.starred.has(id)) fullText = `★ ${ fullText } `;
         } catch { }
         const p = this.computePlacementInfo(dot);
         const layout = this.truncateToThreeLines(fullText, p.width, true);
@@ -1763,7 +1617,7 @@ class TimelineManager {
         const desired = Math.max(H, (N > 0 ? (2 * pad + Math.max(0, N - 1) * minGap) : H));
         this.contentHeight = Math.ceil(desired);
         this.scale = (H > 0) ? (this.contentHeight / H) : 1;
-        try { this.ui.trackContent.style.height = `${this.contentHeight}px`; } catch { }
+        try { this.ui.trackContent.style.height=`${ this.contentHeight } px`; } catch { }
 
         // Precompute desired Y from normalized baseN and enforce min-gap
         const usableC = Math.max(1, this.contentHeight - 2 * pad);
@@ -1876,7 +1730,7 @@ class TimelineManager {
                 try { dot.setAttribute('aria-describedby', 'chatgpt-timeline-tooltip'); } catch { }
                 try { dot.style.setProperty('--n', String(marker.n || 0)); } catch { }
                 if (this.usePixelTop) {
-                    dot.style.top = `${Math.round(this.yPositions[i])}px`;
+                    dot.style.top = `${ Math.round(this.yPositions[i]) } px`;
                 }
                 // Apply active state immediately if this is the active marker
                 try { dot.classList.toggle('active', marker.id === this.activeTurnId); } catch { }
@@ -1890,7 +1744,7 @@ class TimelineManager {
             } else {
                 try { marker.dotElement.style.setProperty('--n', String(marker.n || 0)); } catch { }
                 if (this.usePixelTop) {
-                    marker.dotElement.style.top = `${Math.round(this.yPositions[i])}px`;
+                    marker.dotElement.style.top = `${ Math.round(this.yPositions[i]) } px`;
                 }
                 try {
                     marker.dotElement.classList.toggle('starred', !!marker.starred);
@@ -1946,9 +1800,9 @@ class TimelineManager {
         const railLeftGap = 8; // px gap from bar's left edge
         const sliderWidth = 12; // matches CSS
         const left = Math.round(barRect.left - railLeftGap - sliderWidth);
-        this.ui.slider.style.left = `${left}px`;
-        this.ui.slider.style.top = `${railTop}px`;
-        this.ui.slider.style.height = `${railLen}px`;
+        this.ui.slider.style.left = `${ left } px`;
+        this.ui.slider.style.top = `${ railTop } px`;
+        this.ui.slider.style.height=`${ railLen } px`;
 
         const handleH = 22; // fixed concise handle
         const maxTop = Math.max(0, railLen - handleH);
@@ -1956,8 +1810,8 @@ class TimelineManager {
         const st = this.ui.track.scrollTop || 0;
         const r = Math.max(0, Math.min(1, st / range));
         const top = Math.round(r * maxTop);
-        this.ui.sliderHandle.style.height = `${handleH}px`;
-        this.ui.sliderHandle.style.top = `${top}px`;
+        this.ui.sliderHandle.style.height=`${ handleH } px`;
+        this.ui.sliderHandle.style.top = `${ top } px`;
         try {
             this.ui.slider.classList.add('visible');
             this.ui.slider.style.opacity = '';
@@ -2023,20 +1877,20 @@ class TimelineManager {
         // choose width tier for determinism
         const tiers = [280, 240, 200, 160];
         const hardMax = Math.max(minW, Math.min(maxW, Math.floor(avail)));
-        let width = tiers.find(t => t <= hardMax) || Math.max(minW, Math.min(hardMax, 160));
+        let width=tiers.find(t => t <= hardMax) || Math.max(minW, Math.min(hardMax, 160));
         // if no tier fits (very tight), try switching side
         if (width < minW && placement === 'left' && rightAvail > leftAvail) {
             placement = 'right';
             avail = rightAvail;
             const hardMax2 = Math.max(minW, Math.min(maxW, Math.floor(avail)));
-            width = tiers.find(t => t <= hardMax2) || Math.max(120, Math.min(hardMax2, minW));
+            width=tiers.find(t => t <= hardMax2) || Math.max(120, Math.min(hardMax2, minW));
         } else if (width < minW && placement === 'right' && leftAvail >= rightAvail) {
             placement = 'left';
             avail = leftAvail;
             const hardMax2 = Math.max(minW, Math.min(maxW, Math.floor(avail)));
-            width = tiers.find(t => t <= hardMax2) || Math.max(120, Math.min(hardMax2, minW));
+            width=tiers.find(t => t <= hardMax2) || Math.max(120, Math.min(hardMax2, minW));
         }
-        width = Math.max(120, Math.min(width, maxW));
+        width=Math.max(120, Math.min(width, maxW));
         return { placement, width };
     }
 
@@ -2050,7 +1904,7 @@ class TimelineManager {
             const maxH = Math.round(3 * lineH + 2 * padY + 2 * borderW);
             const ell = '…';
             const el = this.measureEl;
-            el.style.width = `${Math.max(0, Math.floor(targetWidth))}px`;
+            el.style.width=`${ Math.max(0, Math.floor(targetWidth)) } px`;
 
             // fast path: full text fits within 3 lines
             el.textContent = String(text || '').replace(/\s+/g, ' ').trim();
@@ -2271,7 +2125,7 @@ class TimelineManager {
         const cid = this.conversationId;
         if (!cid) return;
         try {
-            const raw = localStorage.getItem(`chatgptTimelineStars:${cid}`);
+            const raw = localStorage.getItem(`chatgptTimelineStars:${ cid } `);
             if (!raw) return;
             const arr = JSON.parse(raw);
             if (Array.isArray(arr)) arr.forEach(id => this.starred.add(String(id)));
@@ -2281,7 +2135,7 @@ class TimelineManager {
     saveStars() {
         const cid = this.conversationId;
         if (!cid) return;
-        try { localStorage.setItem(`chatgptTimelineStars:${cid}`, JSON.stringify(Array.from(this.starred))); } catch { }
+        try { localStorage.setItem(`chatgptTimelineStars:${ cid } `, JSON.stringify(Array.from(this.starred))); } catch { }
     }
 
     toggleStar(turnId) {

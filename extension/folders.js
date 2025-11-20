@@ -94,6 +94,7 @@ class FolderManager {
     }
 
     render() {
+        console.log('[ChatGPT Enhancer] FolderManager.render called');
         let container = document.getElementById('chatgpt-folders-sidebar');
         if (!container) {
             container = document.createElement('div');

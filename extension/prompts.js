@@ -86,6 +86,7 @@ class PromptManager {
     }
 
     render() {
+        console.log('[ChatGPT Enhancer] PromptManager.render called');
         if (document.getElementById('chatgpt-prompts-button')) return;
 
         const btn = document.createElement('button');
